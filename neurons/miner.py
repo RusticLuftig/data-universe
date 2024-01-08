@@ -22,13 +22,14 @@ import time
 import traceback
 import typing
 import bittensor as bt
-from common import utils
+from common import monitoring, utils
 from common.protocol import GetDataEntityBucket, GetMinerIndex
 from neurons.config import NeuronType
 from scraping.config.config_reader import ConfigReader
 from scraping.coordinator import ScraperCoordinator
 from scraping.provider import ScraperProvider
 from storage.miner.sqlite_miner_storage import SqliteMinerStorage
+from datadog import statsd
 
 from neurons.base_neuron import BaseNeuron
 
@@ -81,6 +82,9 @@ class Miner(BaseNeuron):
             miner_storage=self.storage,
             config=scraping_config,
         )
+
+        # Configure monitoring
+        monitoring.initialize(self.config)
 
     def neuron_type(self) -> NeuronType:
         return NeuronType.MINER
@@ -235,6 +239,9 @@ class Miner(BaseNeuron):
         )
         bt.logging.info(log)
 
+        statsd.gauge("position", position)
+
+    @statsd.timed("get_index")
     async def get_index(self, synapse: GetMinerIndex) -> GetMinerIndex:
         """Runs after the GetMinerIndex synapse has been deserialized (i.e. after synapse.data is available)."""
         bt.logging.trace(
@@ -246,6 +253,11 @@ class Miner(BaseNeuron):
 
         bt.logging.debug(
             f"Returning miner index with size: {len(synapse.data_entity_buckets)}"
+        )
+
+        statsd.gauge("index.buckets", len(synapse.data_entity_buckets))
+        statsd.gauge(
+            "index.size", sum(b.size_bytes for b in synapse.data_entity_buckets)
         )
 
         return synapse
@@ -265,6 +277,8 @@ class Miner(BaseNeuron):
         bt.logging.trace(
             f"Got to a GetDataEntityBucket request from {synapse.dendrite.hotkey}."
         )
+
+        statsd.increment("qps.get_data_entity_bucket")
 
         # List all the data entities that this miner has for the requested DataEntityBucket.
         synapse.data_entities = self.storage.list_data_entities_in_data_entity_bucket(
