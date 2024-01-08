@@ -6,7 +6,7 @@ import threading
 import traceback
 import bittensor as bt
 import datetime as dt
-from typing import Any, Coroutine, Dict, List, Optional
+from typing import Any, Awaitable, Coroutine, Dict, List, Optional
 import numpy
 from pydantic import Field, PositiveInt
 from datadog import statsd
@@ -143,7 +143,7 @@ class ScraperCoordinator:
 
     @dataclasses.dataclass(frozen=True)
     class WorkItem:
-        scrape_fn: Coroutine[Any, List[DataEntity]]
+        scrape_fn: Awaitable[List[DataEntity]]
         scraper_id: ScraperId
 
     def __init__(
