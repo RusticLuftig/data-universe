@@ -212,7 +212,7 @@ class ScraperCoordinator:
                     # https://pylint.readthedocs.io/en/latest/user_guide/messages/warning/cell-var-from-loop.html#cell-var-from-loop-w0640
                     bt.logging.trace(f"Adding scrape task for {scraper_id}: {config}")
                     item = ScraperCoordinator.WorkItem(
-                        scraping_fn=functools.partial(scraper.scrape, config),
+                        scrape_fn=functools.partial(scraper.scrape, config),
                         scraper_id=scraper_id,
                     )
                     self.queue.put_nowait(item)
